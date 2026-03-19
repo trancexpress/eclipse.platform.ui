@@ -38,6 +38,7 @@ import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.content.IContentType;
@@ -70,6 +71,11 @@ public class TextSearchVisitor {
 
 	public static final boolean TRACING= "true".equalsIgnoreCase(Platform.getDebugOption("org.eclipse.search/perf")); //$NON-NLS-1$ //$NON-NLS-2$
 	private static final int NUMBER_OF_LOGICAL_THREADS= Runtime.getRuntime().availableProcessors();
+
+	private static final boolean ENABLE_FORBIDDEN_FILES = Platform.getPreferencesService()
+			.getBoolean(SearchCorePlugin.PLUGIN_ID, "enable_search_forbidden_files", false, null); //$NON-NLS-1$
+	public static final QualifiedName FORBIDDEN_KEY = new QualifiedName(SearchCorePlugin.PLUGIN_ID,
+			"search_forbidden_file"); //$NON-NLS-1$
 
 	/**
 	 * Queue of files to be searched. IFile pointing to the same local file are
@@ -191,7 +197,7 @@ public class TextSearchVisitor {
 			IFile file = sameFiles.remove(0);
 			monitor.setTaskName(file.getFullPath().toString());
 			try {
-				if (!fCollector.acceptFile(file) || matcher == null) {
+				if (!fCollector.acceptFile(file) || matcher == null || forbidden(file)) {
 					return Status.OK_STATUS;
 				}
 
@@ -542,4 +548,7 @@ public class TextSearchVisitor {
 		}
 	}
 
+	private static boolean forbidden(IFile file) throws CoreException {
+		return ENABLE_FORBIDDEN_FILES && file.getSessionProperty(FORBIDDEN_KEY) != null;
+	}
 }
